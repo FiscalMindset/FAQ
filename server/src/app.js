@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.routes.js';
 import questionRoutes from './routes/question.routes.js';
 import faqRoutes from './routes/faq.routes.js';
 import userRoutes from './routes/user.routes.js';
+import activityRoutes from './routes/activity.routes.js';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/faqs', faqRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/activities', activityRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

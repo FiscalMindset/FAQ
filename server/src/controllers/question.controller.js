@@ -1,4 +1,6 @@
 import Question from '../models/Question.js';
+import Activity from '../models/Activity.js';
+import { sendEmail } from '../services/email.service.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -21,6 +23,26 @@ export const submitQuestion = async (req, res) => {
     });
 
     await question.save();
+
+    const activity = new Activity({
+      type: 'question_submitted',
+      description: `New question submitted: ${text.substring(0, 50)}...`,
+      entity_type: 'Question',
+      entity_id: question._id,
+      user_id: req.user?._id || null,
+      user_email: req.user?.email || email,
+      user_name: req.user?.username || 'Guest',
+      metadata: { category: category || 'general', source: source || 'manual', is_guest: !req.user }
+    });
+    await activity.save();
+
+    await sendEmail('questionSubmitted', {
+      question: { text, category: category || 'general', source: source || 'manual' },
+      user_name: req.user?.username || null,
+      user_email: req.user?.email || email,
+      timestamp: new Date()
+    });
+
     res.status(201).json(question);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -132,6 +154,26 @@ Only return valid JSON, no markdown or extra text.`;
     } catch {
       return res.status(500).json({ error: 'Failed to parse AI response.', raw: text });
     }
+
+    const activity = new Activity({
+      type: 'ai_suggestion',
+      description: `AI suggested FAQ: ${faqData.question.substring(0, 50)}...`,
+      entity_type: 'FAQ',
+      user_id: req.user?._id,
+      user_email: req.user?.email,
+      user_name: req.user?.username,
+      metadata: { source_questions_count: questionIds.length, category: questions[0].category },
+      is_ai_generated: true
+    });
+    await activity.save();
+
+    await sendEmail('aiSuggestion', {
+      suggestion: faqData,
+      source_count: questionIds.length,
+      user_name: req.user?.username,
+      user_email: req.user?.email,
+      timestamp: new Date()
+    });
 
     res.json({
       suggested: faqData,

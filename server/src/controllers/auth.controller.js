@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Activity from '../models/Activity.js';
 import jwt from 'jsonwebtoken';
 
 export const register = async (req, res) => {
@@ -24,6 +25,18 @@ export const register = async (req, res) => {
     await user.save();
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    const activity = new Activity({
+      type: 'user_registered',
+      description: `User registered: ${username} (${email})`,
+      entity_type: 'User',
+      entity_id: user._id,
+      user_id: user._id,
+      user_email: email,
+      user_name: username,
+      metadata: { role: user.role }
+    });
+    await activity.save();
 
     res.status(201).json({
       token,
@@ -57,6 +70,18 @@ export const login = async (req, res) => {
     await user.save();
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    const activity = new Activity({
+      type: 'user_login',
+      description: `User logged in: ${user.username} (${user.email})`,
+      entity_type: 'User',
+      entity_id: user._id,
+      user_id: user._id,
+      user_email: email,
+      user_name: user.username,
+      metadata: { login_count: user.login_count }
+    });
+    await activity.save();
 
     res.json({
       token,

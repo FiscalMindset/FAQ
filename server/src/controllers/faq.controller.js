@@ -1,9 +1,31 @@
 import FAQ from '../models/FAQ.js';
 import Question from '../models/Question.js';
+import User from '../models/User.js';
+import Activity from '../models/Activity.js';
+import { sendEmail } from '../services/email.service.js';
+
+const logActivity = async (type, description, entityType, entityId, userId, userEmail, userName, metadata = {}, isAiGenerated = false) => {
+  try {
+    const activity = new Activity({
+      type,
+      description,
+      entity_type: entityType,
+      entity_id: entityId,
+      user_id: userId,
+      user_email: userEmail,
+      user_name: userName,
+      metadata,
+      is_ai_generated: isAiGenerated
+    });
+    await activity.save();
+  } catch (error) {
+    console.error('Activity logging failed:', error.message);
+  }
+};
 
 export const createFAQ = async (req, res) => {
   try {
-    const { question, answer, category, source_questions } = req.body;
+    const { question, answer, category, source_questions, is_ai_generated } = req.body;
 
     if (!question || !answer) {
       return res.status(400).json({ error: 'Question and answer are required.' });
@@ -14,7 +36,9 @@ export const createFAQ = async (req, res) => {
       answer,
       category: category || 'general',
       source_questions: source_questions || [],
-      status: 'draft'
+      status: 'draft',
+      is_ai_generated: is_ai_generated || false,
+      created_by: req.user?._id
     });
 
     await faq.save();
@@ -25,6 +49,25 @@ export const createFAQ = async (req, res) => {
         { status: 'converted_to_faq', updated_at: Date.now() }
       );
     }
+
+    await logActivity(
+      'faq_created',
+      `New FAQ created: ${question.substring(0, 50)}...`,
+      'FAQ',
+      faq._id,
+      req.user?._id,
+      req.user?.email,
+      req.user?.username,
+      { category, source_questions_count: source_questions?.length || 0 },
+      is_ai_generated
+    );
+
+    await sendEmail('faqCreated', {
+      faq: { ...faq.toObject(), is_ai_generated },
+      user_name: req.user?.username,
+      user_email: req.user?.email,
+      timestamp: new Date()
+    });
 
     res.status(201).json(faq);
   } catch (error) {
@@ -42,6 +85,7 @@ export const getFAQs = async (req, res) => {
 
     const faqs = await FAQ.find(filter)
       .populate('source_questions', 'text')
+      .populate('created_by', 'username email')
       .sort({ created_at: -1 });
 
     res.json(faqs);
@@ -66,7 +110,9 @@ export const getPublishedFAQs = async (req, res) => {
 export const getFAQById = async (req, res) => {
   try {
     const { id } = req.params;
-    const faq = await FAQ.findById(id).populate('source_questions', 'text');
+    const faq = await FAQ.findById(id)
+      .populate('source_questions', 'text')
+      .populate('created_by', 'username email');
 
     if (!faq) {
       return res.status(404).json({ error: 'FAQ not found.' });
@@ -95,7 +141,8 @@ export const updateFAQ = async (req, res) => {
       updateFields.status = status;
     }
 
-    const faq = await FAQ.findByIdAndUpdate(id, updateFields, { new: true });
+    const faq = await FAQ.findByIdAndUpdate(id, updateFields, { new: true })
+      .populate('created_by', 'username email');
 
     if (!faq) {
       return res.status(404).json({ error: 'FAQ not found.' });
@@ -121,10 +168,51 @@ export const updateFAQStatus = async (req, res) => {
       id,
       { status, updated_at: Date.now() },
       { new: true }
-    );
+    ).populate('created_by', 'username email');
 
     if (!faq) {
       return res.status(404).json({ error: 'FAQ not found.' });
+    }
+
+    let activityType, emailType;
+    switch (status) {
+      case 'approved':
+        activityType = 'faq_approved';
+        emailType = 'faqApproved';
+        break;
+      case 'published':
+        activityType = 'faq_published';
+        emailType = 'faqPublished';
+        break;
+      case 'rejected':
+        activityType = 'faq_rejected';
+        emailType = 'faqRejected';
+        break;
+      default:
+        activityType = null;
+        emailType = null;
+    }
+
+    if (activityType) {
+      await logActivity(
+        activityType,
+        `FAQ ${status}: ${faq.question.substring(0, 50)}...`,
+        'FAQ',
+        faq._id,
+        req.user?._id,
+        req.user?.email,
+        req.user?.username,
+        { previous_status: faq.status }
+      );
+
+      if (emailType) {
+        await sendEmail(emailType, {
+          faq: { ...faq.toObject(), is_ai_generated: faq.is_ai_generated },
+          user_name: req.user?.username,
+          user_email: req.user?.email,
+          timestamp: new Date()
+        });
+      }
     }
 
     res.json(faq);
@@ -141,6 +229,24 @@ export const deleteFAQ = async (req, res) => {
     if (!faq) {
       return res.status(404).json({ error: 'FAQ not found.' });
     }
+
+    await logActivity(
+      'faq_deleted',
+      `FAQ deleted: ${faq.question.substring(0, 50)}...`,
+      'FAQ',
+      faq._id,
+      req.user?._id,
+      req.user?.email,
+      req.user?.username,
+      { deleted_faq_status: faq.status }
+    );
+
+    await sendEmail('faqDeleted', {
+      faq: { question: faq.question, answer: faq.answer, category: faq.category, status: faq.status },
+      user_name: req.user?.username,
+      user_email: req.user?.email,
+      timestamp: new Date()
+    });
 
     await Question.updateMany(
       { _id: { $in: faq.source_questions } },
@@ -192,6 +298,26 @@ export const exportPublishedFAQs = async (req, res) => {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=faqs_export_${new Date().toISOString().split('T')[0]}.csv`);
     res.send(csvContent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getActivities = async (req, res) => {
+  try {
+    const { limit = 50, offset = 0, type } = req.query;
+    const filter = {};
+    if (type) filter.type = type;
+
+    const activities = await Activity.find(filter)
+      .populate('user_id', 'username email')
+      .sort({ created_at: -1 })
+      .skip(parseInt(offset))
+      .limit(parseInt(limit));
+
+    const total = await Activity.countDocuments(filter);
+
+    res.json({ activities, total, limit: parseInt(limit), offset: parseInt(offset) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

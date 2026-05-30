@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import AdminQuestions from './pages/AdminQuestions';
 import AdminFAQs from './pages/AdminFAQs';
 import AdminUsers from './pages/AdminUsers';
+import AdminActivities from './pages/AdminActivities';
+import AdminAnalytics from './pages/AdminAnalytics';
 
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
@@ -53,6 +55,12 @@ function AppRoutes() {
         } />
         <Route path="admin/users" element={
           <ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>
+        } />
+        <Route path="admin/activities" element={
+          <ProtectedRoute adminOnly><AdminActivities /></ProtectedRoute>
+        } />
+        <Route path="admin/analytics" element={
+          <ProtectedRoute adminOnly><AdminAnalytics /></ProtectedRoute>
         } />
       </Route>
     </Routes>

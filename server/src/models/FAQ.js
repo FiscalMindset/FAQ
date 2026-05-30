@@ -11,10 +11,13 @@ const faqSchema = new mongoose.Schema({
   },
   source_questions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
   views: { type: Number, default: 0 },
+  is_ai_generated: { type: Boolean, default: false },
+  created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 });
 
 faqSchema.index({ status: 1, category: 1 });
+faqSchema.index({ created_by: 1 });
 
 export default mongoose.model('FAQ', faqSchema);
