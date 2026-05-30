@@ -52,6 +52,10 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
+    user.last_login = new Date();
+    user.login_count = (user.login_count || 0) + 1;
+    await user.save();
+
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.json({

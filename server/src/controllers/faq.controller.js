@@ -171,3 +171,28 @@ export const incrementViews = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const exportPublishedFAQs = async (req, res) => {
+  try {
+    const faqs = await FAQ.find({ status: 'published' })
+      .select('question answer category views created_at')
+      .sort({ views: -1 });
+
+    const csvContent = [
+      ['Question', 'Answer', 'Category', 'Views', 'Created Date'].join(','),
+      ...faqs.map(faq => [
+        `"${(faq.question || '').replace(/"/g, '""')}"`,
+        `"${(faq.answer || '').replace(/"/g, '""')}"`,
+        faq.category || 'general',
+        faq.views || 0,
+        new Date(faq.created_at).toISOString().split('T')[0]
+      ].join(','))
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=faqs_export_${new Date().toISOString().split('T')[0]}.csv`);
+    res.send(csvContent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

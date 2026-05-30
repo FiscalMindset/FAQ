@@ -35,6 +35,22 @@ const AdminFAQs = () => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const response = await api.get('/api/faqs/export/csv', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `faqs_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showSuccess('FAQs exported successfully');
+    } catch (err) {
+      setError('Failed to export FAQs.');
+    }
+  };
+
   const handleStatusChange = async (id, newStatus) => {
     try {
       await api.patch(`/api/faqs/${id}/status`, { status: newStatus });
@@ -140,6 +156,12 @@ const AdminFAQs = () => {
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors"
           >
             Bulk Import
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+          >
+            Export CSV
           </button>
         </div>
       </div>
