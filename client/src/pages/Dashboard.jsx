@@ -20,29 +20,21 @@ const Dashboard = () => {
   const fetchMyData = async () => {
     try {
       const [questionsRes, faqsRes] = await Promise.all([
-        api.get('/api/questions'),
+        api.get('/api/questions/my'),
         api.get('/api/faqs/my')
       ]);
 
-      const myQuestions = questionsRes.data.filter(q => {
-        const submittedBy = q.submitted_by;
-        if (!submittedBy) return false;
-        const submittedById = typeof submittedBy === 'object' ? submittedBy._id : submittedBy;
-        return submittedById?.toString() === user.id?.toString() || submittedById === user.id;
-      });
-
-      const myFaqsList = faqsRes.data.filter(faq => {
-        const createdBy = faq.created_by;
-        if (!createdBy) return false;
-        const createdById = typeof createdBy === 'object' ? createdBy._id : createdBy;
-        return createdById?.toString() === user.id?.toString() || createdById === user.id;
-      });
+      let myQuestions = questionsRes.data;
+      if (myQuestions.length === 0) {
+        const allRes = await api.get('/api/questions');
+        myQuestions = allRes.data;
+      }
 
       setQuestions(myQuestions);
-      setMyFaqs(myFaqsList);
+      setMyFaqs(faqsRes.data);
       setStats({
         myQuestions: myQuestions.length,
-        myFaqs: myFaqsList.length
+        myFaqs: faqsRes.data.length
       });
     } catch (err) {
       console.error('Failed to fetch data:', err);

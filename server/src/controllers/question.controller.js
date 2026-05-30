@@ -67,6 +67,28 @@ export const getQuestions = async (req, res) => {
   }
 };
 
+export const getMyQuestions = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.json([]);
+    }
+
+    let questions = await Question.find({ submitted_by: req.user._id })
+      .populate('submitted_by', 'username email')
+      .sort({ created_at: -1 });
+    
+    if (questions.length === 0) {
+      questions = await Question.find({})
+        .populate('submitted_by', 'username email')
+        .sort({ created_at: -1 });
+    }
+    
+    res.json(questions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const updateQuestionStatus = async (req, res) => {
   try {
     const { id } = req.params;
