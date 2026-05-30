@@ -33,12 +33,10 @@ const SubmitQuestion = () => {
       }
 
       await api.post('/api/questions', payload);
-      setSuccess('Question submitted successfully!');
+      setSuccess('Question submitted successfully! Our team will review it shortly.');
       setText('');
       setCategory('general');
       setEmail('');
-      
-      setTimeout(() => navigate('/'), 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit question.');
     } finally {

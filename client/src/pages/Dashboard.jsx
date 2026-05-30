@@ -136,7 +136,8 @@ const Dashboard = () => {
                   <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-gray-500 mb-4">You haven't submitted any questions yet.</p>
+                  <p className="text-gray-500 mb-2">You haven't submitted any questions yet.</p>
+                  <p className="text-sm text-gray-400 mb-4">Submit a question and our team will review it.</p>
                   <Link
                     to="/submit-question"
                     className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -145,33 +146,39 @@ const Dashboard = () => {
                   </Link>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[600px]">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-2 text-sm font-medium text-gray-600">Question</th>
-                        <th className="pb-2 text-sm font-medium text-gray-600">Category</th>
-                        <th className="pb-2 text-sm font-medium text-gray-600">Status</th>
-                        <th className="pb-2 text-sm font-medium text-gray-600">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {questions.map(q => (
-                        <tr key={q._id} className="border-b last:border-0 hover:bg-gray-50">
-                          <td className="py-3 pr-4">
-                            <div className="max-w-md">{q.text}</div>
-                          </td>
-                          <td className="py-3 pr-4">
-                            <span className="px-2 py-1 bg-gray-100 rounded text-sm">{q.category}</span>
-                          </td>
-                          <td className="py-3 pr-4">
+                <div className="space-y-3">
+                  {questions.map(q => (
+                    <div key={q._id} className="border rounded-lg p-4 hover:bg-gray-50">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 mb-1">{q.text}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-gray-100 rounded text-xs">{q.category}</span>
                             {getStatusBadge(q.status)}
-                          </td>
-                          <td className="py-3 text-sm text-gray-500">{formatDate(q.created_at)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            {q.status === 'new' && (
+                              <span className="px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded text-xs">⏳ Awaiting review</span>
+                            )}
+                            {q.status === 'grouped' && (
+                              <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs">📦 Grouped with similar questions</span>
+                            )}
+                            {q.status === 'reviewed' && (
+                              <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">👀 Under consideration</span>
+                            )}
+                            {q.status === 'converted_to_faq' && (
+                              <span className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs">✅ Converted to FAQ</span>
+                            )}
+                            {q.status === 'rejected' && (
+                              <span className="px-2 py-0.5 bg-red-50 text-red-700 rounded text-xs">❌ Not approved</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-sm text-gray-400 whitespace-nowrap">{formatDate(q.created_at)}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Question submitted on {formatDate(q.created_at)}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               )}
             </>
@@ -184,8 +191,17 @@ const Dashboard = () => {
                   <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-gray-500 mb-4">No FAQs created from your questions yet.</p>
-                  <p className="text-sm text-gray-400">When an admin converts your questions to FAQs, they will appear here.</p>
+                  <p className="text-gray-500 mb-2">No FAQs created from your questions yet.</p>
+                  <p className="text-sm text-gray-400 mb-4">When an admin converts your questions to FAQs and publishes them, they will appear here.</p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left text-sm">
+                    <p className="font-medium text-blue-800 mb-2">FAQ Status Guide:</p>
+                    <div className="space-y-1 text-blue-700">
+                      <p><span className="font-medium">Draft:</span> FAQ created but under review</p>
+                      <p><span className="font-medium">Approved:</span> FAQ approved by admin</p>
+                      <p><span className="font-medium">Published:</span> Visible to everyone on the homepage</p>
+                      <p><span className="font-medium">Rejected:</span> FAQ was not approved</p>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -200,6 +216,16 @@ const Dashboard = () => {
                               <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs">🤖 AI Generated</span>
                             )}
                             {getStatusBadge(faq.status)}
+                            {faq.status !== 'published' && (
+                              <span className="px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded text-xs">
+                                {faq.status === 'draft' ? '⏳ Awaiting review' : 
+                                 faq.status === 'approved' ? '⏳ Awaiting publish' : 
+                                 '❌ Rejected by admin'}
+                              </span>
+                            )}
+                            {faq.status === 'published' && (
+                              <span className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs">✅ Live on homepage</span>
+                            )}
                           </div>
                         </div>
                       </div>
