@@ -322,3 +322,14 @@ export const getActivities = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getMyFAQs = async (req, res) => {
+  try {
+    const faqs = await FAQ.find({ created_by: req.user._id })
+      .populate('source_questions', 'text status')
+      .sort({ created_at: -1 });
+    res.json(faqs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

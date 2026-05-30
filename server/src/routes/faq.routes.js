@@ -4,6 +4,7 @@ import {
   getFAQs,
   getPublishedFAQs,
   getFAQById,
+  getMyFAQs,
   updateFAQ,
   updateFAQStatus,
   deleteFAQ,
@@ -15,6 +16,7 @@ import { authenticate, requireAdmin } from '../middleware/auth.js';
 const router = Router();
 
 router.get('/published', getPublishedFAQs);
+router.get('/my', authenticate, getMyFAQs);
 router.get('/export/csv', authenticate, requireAdmin, exportPublishedFAQs);
 router.patch('/:id/view', incrementViews);
 router.get('/:id', authenticate, getFAQById);

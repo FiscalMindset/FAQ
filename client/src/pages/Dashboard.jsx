@@ -5,11 +5,11 @@ import api from '../services/api';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    myQuestions: 0,
-    submittedQuestions: []
-  });
+  const [questions, setQuestions] = useState([]);
+  const [myFaqs, setMyFaqs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ myQuestions: 0, myFaqs: 0 });
+  const [activeTab, setActiveTab] = useState('questions');
 
   useEffect(() => {
     if (user?.id) {
@@ -19,13 +19,30 @@ const Dashboard = () => {
 
   const fetchMyData = async () => {
     try {
-      const response = await api.get('/api/questions');
-      const myQuestions = response.data.filter(q => 
-        q.submitted_by && q.submitted_by._id === user.id
-      );
+      const [questionsRes, faqsRes] = await Promise.all([
+        api.get('/api/questions'),
+        api.get('/api/faqs/my')
+      ]);
+
+      const myQuestions = questionsRes.data.filter(q => {
+        const submittedBy = q.submitted_by;
+        if (!submittedBy) return false;
+        const submittedById = typeof submittedBy === 'object' ? submittedBy._id : submittedBy;
+        return submittedById?.toString() === user.id?.toString() || submittedById === user.id;
+      });
+
+      const myFaqsList = faqsRes.data.filter(faq => {
+        const createdBy = faq.created_by;
+        if (!createdBy) return false;
+        const createdById = typeof createdBy === 'object' ? createdBy._id : createdBy;
+        return createdById?.toString() === user.id?.toString() || createdById === user.id;
+      });
+
+      setQuestions(myQuestions);
+      setMyFaqs(myFaqsList);
       setStats({
         myQuestions: myQuestions.length,
-        submittedQuestions: myQuestions
+        myFaqs: myFaqsList.length
       });
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -39,9 +56,27 @@ const Dashboard = () => {
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric'
     });
+  };
+
+  const getStatusBadge = (status) => {
+    const colors = {
+      new: 'bg-blue-100 text-blue-800',
+      grouped: 'bg-purple-100 text-purple-800',
+      reviewed: 'bg-yellow-100 text-yellow-800',
+      converted_to_faq: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
+      draft: 'bg-gray-100 text-gray-800',
+      approved: 'bg-blue-100 text-blue-800',
+      published: 'bg-green-100 text-green-800'
+    };
+    return (
+      <span className={`px-2 py-1 rounded text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status.replace(/_/g, ' ')}
+      </span>
+    );
   };
 
   if (loading) {
@@ -53,90 +88,154 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="max-w-5xl mx-auto px-4 py-6">
       <h1 className="text-2xl md:text-3xl font-bold mb-6">My Dashboard</h1>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-sm p-5 border">
-          <h3 className="text-gray-500 text-sm mb-1">My Questions</h3>
-          <p className="text-3xl font-bold text-blue-600">{stats.myQuestions}</p>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white rounded-lg shadow-sm p-4 border">
+          <h3 className="text-gray-500 text-xs mb-1">My Questions</h3>
+          <p className="text-2xl font-bold text-blue-600">{stats.myQuestions}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm p-5 border">
-          <h3 className="text-gray-500 text-sm mb-1">Account Type</h3>
-          <p className="text-xl font-semibold text-purple-600">{user.role}</p>
+        <div className="bg-white rounded-lg shadow-sm p-4 border">
+          <h3 className="text-gray-500 text-xs mb-1">My FAQs</h3>
+          <p className="text-2xl font-bold text-green-600">{stats.myFaqs}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm p-5 border sm:col-span-2 lg:col-span-1">
-          <h3 className="text-gray-500 text-sm mb-1">Member Since</h3>
-          <p className="text-lg font-medium">{formatDate(user.created_at)}</p>
+        <div className="bg-white rounded-lg shadow-sm p-4 border">
+          <h3 className="text-gray-500 text-xs mb-1">Questions → FAQs</h3>
+          <p className="text-2xl font-bold text-purple-600">
+            {stats.myQuestions > 0 ? Math.round((stats.myFaqs / stats.myQuestions) * 100) : 0}%
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-4 border">
+          <h3 className="text-gray-500 text-xs mb-1">Account</h3>
+          <p className="text-lg font-semibold text-gray-700">{user.role}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm p-5 border">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">My Submitted Questions</h2>
-          <Link 
-            to="/submit-question" 
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="border-b flex">
+          <button
+            onClick={() => setActiveTab('questions')}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'questions'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
           >
-            + Submit New
-          </Link>
+            My Questions ({questions.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('faqs')}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'faqs'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            My FAQs ({myFaqs.length})
+          </button>
         </div>
-        
-        {stats.submittedQuestions.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="mb-4">No questions submitted yet.</p>
-            <Link 
-              to="/submit-question"
-              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Submit Your First Question
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px]">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="pb-2 text-sm font-medium text-gray-600">Question</th>
-                  <th className="pb-2 text-sm font-medium text-gray-600">Category</th>
-                  <th className="pb-2 text-sm font-medium text-gray-600">Status</th>
-                  <th className="pb-2 text-sm font-medium text-gray-600">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.submittedQuestions.map(q => (
-                  <tr key={q._id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="py-3 pr-4">
-                      <div className="max-w-md truncate">{q.text}</div>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span className="px-2 py-1 bg-gray-100 rounded text-sm">
-                        {q.category}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span className={`px-2 py-1 rounded text-sm ${
-                        q.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                        q.status === 'grouped' ? 'bg-purple-100 text-purple-800' :
-                        q.status === 'reviewed' ? 'bg-yellow-100 text-yellow-800' :
-                        q.status === 'converted_to_faq' ? 'bg-green-100 text-green-800' :
-                        q.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {q.status.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="py-3 text-sm text-gray-500">
-                      {formatDate(q.created_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+
+        <div className="p-4">
+          {activeTab === 'questions' && (
+            <>
+              {questions.length === 0 ? (
+                <div className="text-center py-12">
+                  <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-gray-500 mb-4">You haven't submitted any questions yet.</p>
+                  <Link
+                    to="/submit-question"
+                    className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Submit Your First Question
+                  </Link>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px]">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="pb-2 text-sm font-medium text-gray-600">Question</th>
+                        <th className="pb-2 text-sm font-medium text-gray-600">Category</th>
+                        <th className="pb-2 text-sm font-medium text-gray-600">Status</th>
+                        <th className="pb-2 text-sm font-medium text-gray-600">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {questions.map(q => (
+                        <tr key={q._id} className="border-b last:border-0 hover:bg-gray-50">
+                          <td className="py-3 pr-4">
+                            <div className="max-w-md">{q.text}</div>
+                          </td>
+                          <td className="py-3 pr-4">
+                            <span className="px-2 py-1 bg-gray-100 rounded text-sm">{q.category}</span>
+                          </td>
+                          <td className="py-3 pr-4">
+                            {getStatusBadge(q.status)}
+                          </td>
+                          <td className="py-3 text-sm text-gray-500">{formatDate(q.created_at)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'faqs' && (
+            <>
+              {myFaqs.length === 0 ? (
+                <div className="text-center py-12">
+                  <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-gray-500 mb-4">No FAQs created from your questions yet.</p>
+                  <p className="text-sm text-gray-400">When an admin converts your questions to FAQs, they will appear here.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {myFaqs.map(faq => (
+                    <div key={faq._id} className="border rounded-lg p-4 hover:bg-gray-50">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900 mb-1">{faq.question}</h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{faq.category}</span>
+                            {faq.is_ai_generated && (
+                              <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs">🤖 AI Generated</span>
+                            )}
+                            {getStatusBadge(faq.status)}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-2">{faq.answer}</p>
+                      {faq.source_questions && faq.source_questions.length > 0 && (
+                        <div className="text-xs text-gray-500">
+                          <span className="font-medium">Source questions ({faq.source_questions.length}):</span>
+                          <ul className="mt-1 ml-4 space-y-1">
+                            {faq.source_questions.slice(0, 3).map((sq, i) => (
+                              <li key={sq._id || i} className="text-gray-600">• {sq.text}</li>
+                            ))}
+                            {faq.source_questions.length > 3 && (
+                              <li className="text-gray-400">+ {faq.source_questions.length - 3} more...</li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-400 mt-2">
+                        Created {formatDate(faq.created_at)}
+                        {faq.views > 0 && <span> • {faq.views} views</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
