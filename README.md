@@ -8,565 +8,471 @@
 
 **A scalable, production-ready FAQ management system with AI-powered suggestions**
 
-*[Samagama.in](https://samagama.in) • Report Bug • Request Feature*
+*[Report Bug](https://github.com/FiscalMindset/FAQ/issues) • [Request Feature](https://github.com/FiscalMindset/FAQ/issues)*
 
 </div>
 
 ---
 
-## 📐 Architecture Overview
+## Architecture Overview
 
-```mermaid
-flowchart TB
-    subgraph Client["Frontend - Vercel"]
-        UI["React + Vite + Tailwind CSS"]
-        RC["React Context / Auth"]
-        AX["Axios HTTP Client"]
-    end
+### System Architecture
 
-    subgraph Server["Backend - Render"]
-        EX["Express.js Server"]
-        MW["JWT Auth Middleware"]
-        RCtrl["Route Controllers"]
-        GM["Gemini AI Service"]
-    end
-
-    subgraph Database["MongoDB Atlas"]
-        MDB["MongoDB Clusters"]
-        RS["Replica Set"]
-        AT["Atlas Search Index"]
-    end
-
-    subgraph External["External Services"]
-        GG["Google Gemini API"]
-        MG["MongoDB Atlas"]
-    end
-
-    Client -->|"HTTPS / REST API"| Server
-    Server -->|" mongoose "| Database
-    Server -->|" Gemini SDK"| External
-    EX --> MW --> RCtrl
-    RCtrl --> GM
-    GM --> GG
-
-    style Client fill:#61dafb,color:#000
-    style Server fill:#68a063,color:#fff
-    style Database fill:#00684a,color:#fff
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Public Internet                                 │
+│                    👤 User                    👤 Admin                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Vercel CDN (Frontend)                          │
+│                     React + Vite + Tailwind CSS                             │
+│                         https://your-app.vercel.app                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │                    │
+                                      │ REST API          │ REST API
+                                      ▼                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             Render Cloud (Backend)                          │
+│                      Express.js + Node.js API Server                        │
+│                    https://faq-generator-api.onrender.com                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+                    │                    │                    │
+                    │ mongoose           │ Gemini SDK         │
+                    ▼                    ▼                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          MongoDB Atlas (Database)                           │
+│                    Cluster with Replica Set + Atlas Search                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Google Gemini Pro (AI)                             │
+│                        FAQ Generation & Suggestions                         │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 🔄 Data Flow Diagram
+### Data Flow
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant C as Client
-    participant S as Server
-    participant G as Gemini AI
-    participant D as MongoDB
-
-    Note over U,D: FAQ Submission & Approval Flow
-
-    U->>C: Submit Question
-    C->>S: POST /api/questions
-    S->>D: Save Question (status: new)
-    D-->>S: Question Created
-    S-->>C: 201 Created
-    C-->>U: Success Message
-
-    Note over U,D: Admin Workflow
-
-    U->>C: Login as Admin
-    C->>S: POST /api/auth/login
-    S->>D: Verify User
-    D-->>S: User Data
-    S-->>C: JWT Token
-
-    C->>S: GET /api/questions?status=new
-    S-->>C: Questions List
-
-    C->>S: POST /api/questions/group
-    S->>D: Update Questions (status: grouped)
-    D-->>S: Updated
-    S-->>C: Grouped Questions
-
-    C->>S: POST /api/questions/suggest-faq
-    S->>G: Generate FAQ
-    G-->>S: Suggested Q&A
-    S->>D: Save FAQ (status: draft)
-    D-->>S: FAQ Created
-    S-->>C: Suggested FAQ
-
-    C->>S: PATCH /api/faqs/:id/status
-    S->>D: Update status → published
-    D-->>S: Updated
-    S-->>C: Published FAQ
-
-    Note over U,D: Public User Flow
-
-    U->>C: Visit Homepage
-    C->>S: GET /api/faqs/published
-    S->>D: Find Published FAQs
-    D-->>S: FAQ List
-    S-->>C: FAQs
-    C-->>U: Display FAQs
+```
+User submits question                    Admin workflow
+      │                                        │
+      ▼                                        ▼
+┌─────────┐    POST /api/questions    ┌─────────────────┐
+│ Client  │ ─────────────────────────►│   Express API   │
+└─────────┘                           └────────┬────────┘
+      │                                        │
+      │                                        ▼
+      │                              ┌─────────────────┐
+      │                              │    MongoDB      │
+      │                              │  Question saved │
+      │                              │    (status: new)│
+      │                              └────────┬────────┘
+      │                                        │
+      │                                        ▼
+      │                              ┌─────────────────┐
+      │                              │  Admin groups   │
+      │                              │  questions      │
+      │                              └────────┬────────┘
+      │                                        │
+      │                                        ▼
+      │                              ┌─────────────────┐
+      │                              │ Gemini AI       │
+      │                              │ suggests FAQ    │
+      │                              └────────┬────────┘
+      │                                        │
+      │                                        ▼
+      │                              ┌─────────────────┐
+      │                              │ FAQ saved       │
+      │                              │ (status:draft)  │
+      │                              └────────┬────────┘
+      │                                        │
+      │                                        ▼
+      │                              ┌─────────────────┐
+      │                              │ Admin approves  │
+      │                              │ and publishes   │
+      │                              └────────┬────────┘
+      │                                        │
+      ▼                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        Public User visits homepage                          │
+│                   GET /api/faqs/published → FAQs displayed                  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 🏗️ System Architecture
+### Database Schema
 
-```mermaid
-flowchart LR
-    subgraph Internet["Public Internet"]
-        U1[("👤 User")]
-        U2[("👤 Admin")]
-    end
-
-    subgraph Cloud["Cloud Infrastructure"]
-        subgraph Vercel["Vercel CDN"]
-            FE[("Frontend App")]
-        end
-
-        subgraph Render["Render Cloud"]
-            API[("API Server")]
-        end
-
-        subgraph Atlas["MongoDB Atlas"]
-            DB[(("Database"))]
-        end
-    end
-
-    subgraph External["External APIs"]
-        GEM[("Gemini AI"))]
-    end
-
-    U1 -->|HTTPS| FE
-    U2 -->|HTTPS| FE
-    FE -->|REST API| API
-    API -->|mongoose| DB
-    API -->|HTTPS| GEM
-
-    style Vercel fill:#000,color:#fff
-    style Render fill:#ff0000,color:#fff
-    style Atlas fill:#00684a,color:#fff
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                   USERS                                       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  _id          : ObjectId (auto)                                             │
+│  username     : String (unique, required)                                   │
+│  email        : String (unique, required, lowercase)                        │
+│  password_hash: String (bcrypt hashed)                                      │
+│  role         : Enum ['USER', 'ADMIN']  ←── admin@samagama.in auto-promoted │
+│  created_at   : Date (default: now)                                         │
+│  updated_at   : Date (auto on update)                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+                    │
+                    │ 1:N (one user submits many questions)
+                    ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                 QUESTIONS                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  _id          : ObjectId (auto)                                             │
+│  text         : String (required)                                           │
+│  category     : String (default: 'general')                                 │
+│  source       : String (default: 'manual')                                  │
+│  status       : Enum ['new','grouped','reviewed','converted_to_faq','rejected']│
+│  submitted_by : ObjectId (ref: User, nullable for guests)                   │
+│  is_guest     : Boolean                                                     │
+│  guest_email  : String (nullable)                                           │
+│  created_at   : Date                                                        │
+│  updated_at   : Date                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+                    │
+                    │ N:1 (many questions contribute to one FAQ)
+                    ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                   FAQS                                       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  _id             : ObjectId (auto)                                          │
+│  question        : String (required)                                        │
+│  answer          : String (required)                                        │
+│  category        : String (default: 'general')                              │
+│  status          : Enum ['draft','approved','published','rejected']         │
+│  source_questions: Array<ObjectId> (ref: Question)                          │
+│  created_at      : Date                                                     │
+│  updated_at      : Date                                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 📊 Database Schema
+### FAQ Status Workflow
 
-```mermaid
-erDiagram
-    USER ||--o{ QUESTION : submits
-    USER {
-        string username
-        string email
-        string password_hash
-        enum role "USER|ADMIN"
-        date created_at
-        date updated_at
-    }
-
-    QUESTION ||--o{ FAQ : "contributes to"
-    QUESTION {
-        string text
-        string category
-        string source
-        enum status "new|grouped|reviewed|converted_to_faq|rejected"
-        ObjectId submitted_by
-        boolean is_guest
-        string guest_email
-        date created_at
-        date updated_at
-    }
-
-    FAQ {
-        string question
-        string answer
-        string category
-        enum status "draft|approved|published|rejected"
-        array source_questions
-        date created_at
-        date updated_at
-    }
+```
+                                    ┌──────────────────┐
+                                    │                  │
+    ┌─────────┐                     │                  │
+    │ [START] │                     │                  │
+    └────┬────┘                     │                  │
+         │ User submits             ▼                  │
+         ▼                          │                  │
+    ┌─────────┐                     │                  │
+    │   NEW   │ ────────────────────┘                  │
+    └────┬────┘       Admin rejects                    │
+         │                                          ▲
+         │ Admin groups similar questions            │
+         ▼                                          │
+    ┌──────────┐                                    │
+    │ GROUPED  │                                    │
+    └────┬─────┘                                    │
+         │                                          │
+         │ Admin reviews                            │
+         ▼                                          │
+    ┌──────────┐                                    │
+    │ REVIEWED │                                    │
+    └────┬─────┘                                    │
+         │                                          │
+         │ Admin selects + Gemini AI suggests       │
+         ▼                                          │
+    ┌────────┐                                      │
+    │ DRAFT  │ ─────────────────────────────────────┘
+    └────┬───┘        Admin approves              Admin rejects
+         │                                         │
+         │                                         ▼
+         ▼                                   ┌──────────┐
+    ┌───────────┐                            │ REJECTED │
+    │ APPROVED  │                            └────┬─────┘
+    └─────┬─────┘                                  │
+         │                                        │
+         │ Admin publishes                        │
+         ▼                                        ▼
+    ┌────────────┐                          ┌──────────┐
+    │ PUBLISHED  │                          │ REJECTED │
+    └──────┬─────┘                          └──────────┘
+           │
+           │ Everyone sees on homepage
+           ▼
+      [PUBLIC]
 ```
 
-## 🔐 Security Architecture
+### Security Architecture
 
-```mermaid
-flowchart TB
-    subgraph Client["Client Side"]
-        TOKEN["JWT in localStorage"]
-        AX["Axios Interceptor"]
-    end
-
-    subgraph Server["Server Side"]
-        CORS["CORS Middleware"]
-        AUTH["JWT Verification"]
-        RATE["Rate Limiter"]
-        VAL["Input Validation"]
-    end
-
-    subgraph Protection["Security Layers"]
-        SSL["SSL/TLS Encryption"]
-        HB["Helmet.js Headers"]
-        SAN["Sanitization"]
-    end
-
-    Client --> |Bearer Token| CORS
-    CORS --> AUTH
-    AUTH --> RATE
-    RATE --> VAL
-    VAL --> Protection
-
-    style Security fill:#ff6b6b,color:#fff
 ```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Request Flow                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-## 🚀 Tech Stack
-
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Frontend** | React 18 + Vite | UI Framework |
-| **Styling** | Tailwind CSS v3 | Responsive Design |
-| **Routing** | React Router v6 | Client-side Routing |
-| **HTTP** | Axios | API Communication |
-| **Backend** | Express.js | REST API Server |
-| **Database** | MongoDB + Mongoose | Data Persistence |
-| **Auth** | JWT + bcryptjs | Authentication |
-| **AI** | Google Gemini Pro | FAQ Generation |
-| **Hosting** | Vercel + Render | Cloud Deployment |
-
----
-
-## ⚡ Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- MongoDB Atlas Account
-- Google Gemini API Key
-- Git
-
-### Local Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/FiscalMindset/FAQ.git
-cd FAQ
-
-# Install server dependencies
-cd server && npm install
-
-# Install client dependencies
-cd ../client && npm install
-
-# Configure environment
-cp server/.env.example server/.env
-# Edit server/.env with your credentials
-
-# Start development servers
-cd server && npm run dev  # Terminal 1 - API on :5000
-cd client && npm run dev  # Terminal 2 - UI on :5173
-```
-
-### Required Environment Variables
-
-```bash
-# server/.env
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/dbname
-JWT_SECRET=your_64_char_random_string
-GEMINI_API_KEY=your_gemini_api_key
-CLIENT_URL=http://localhost:5173
-PORT=5000
-ADMIN_EMAIL=admin@samagama.in
-NODE_ENV=development
+     ┌─────────────┐
+     │   Client    │
+     │ JWT in      │
+     │ localStorage│
+     └──────┬──────┘
+            │ Bearer Token
+            ▼
+     ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+     │    CORS     │ ───► │  JWT Auth   │ ───► │Rate Limiter │
+     │  Middleware │      │ Middleware  │      │   (100/min) │
+     └─────────────┘      └──────┬──────┘      └─────────────┘
+                                 │
+                                 ▼
+                          ┌─────────────┐      ┌─────────────┐
+                          │   Input     │      │  Helmet.js  │
+                          │ Validation  │      │  Security   │
+                          └─────────────┘      └─────────────┘
+                                 │
+                                 ▼
+                          ┌─────────────┐
+                          │  Controller │
+                          │   Logic     │
+                          └─────────────┘
+                                 │
+                                 ▼
+                          ┌─────────────┐
+                          │  Response   │
+                          └─────────────┘
 ```
 
 ---
 
-## 📦 API Reference
+## Tech Stack
 
-### Authentication
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/auth/register` | Register new user |
-| `POST` | `/api/auth/login` | Login and get JWT |
-
-### Questions (Protected)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/questions` | List all questions |
-| `POST` | `/api/questions` | Submit new question |
-| `POST` | `/api/questions/group` | Group selected questions |
-| `POST` | `/api/questions/suggest-faq` | Get AI-generated FAQ |
-| `PATCH` | `/api/questions/:id/status` | Update question status |
-| `DELETE` | `/api/questions/:id` | Delete question |
-
-### FAQs (Protected + Public)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/faqs/published` | List published FAQs (Public) |
-| `GET` | `/api/faqs` | List all FAQs (Admin) |
-| `POST` | `/api/faqs` | Create new FAQ (Admin) |
-| `PUT` | `/api/faqs/:id` | Update FAQ (Admin) |
-| `PATCH` | `/api/faqs/:id/status` | Update FAQ status (Admin) |
-| `DELETE` | `/api/faqs/:id` | Delete FAQ (Admin) |
-
-### Users (Admin Only)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/users` | List all users |
-| `GET` | `/api/users/stats` | Get user statistics |
-| `PUT` | `/api/users/:id` | Update user role |
-| `DELETE` | `/api/users/:id` | Delete user |
+| Layer | Technology | Version | Purpose |
+|-------|------------|---------|---------|
+| **Frontend** | React | 18.x | UI Framework |
+| **Build Tool** | Vite | 5.x | Fast dev/build |
+| **Styling** | Tailwind CSS | 3.x | Responsive design |
+| **Routing** | React Router | 6.x | Client-side routing |
+| **HTTP Client** | Axios | 1.x | API communication |
+| **Backend** | Express.js | 4.x | REST API server |
+| **Runtime** | Node.js | 18.x | JavaScript runtime |
+| **Database** | MongoDB | 6.x | NoSQL database |
+| **ODM** | Mongoose | 8.x | MongoDB object modeling |
+| **Auth** | JWT | 9.x | Token-based auth |
+| **Hashing** | bcryptjs | 2.x | Password hashing |
+| **AI** | Gemini Pro | 0.21.x | FAQ generation |
+| **Frontend Host** | Vercel | - | Edge CDN |
+| **Backend Host** | Render | - | Cloud server |
+| **Database Host** | MongoDB Atlas | - | Cloud DB |
 
 ---
 
-## 🔄 FAQ Workflow
-
-```mermaid
-stateDiagram-v2
-    [*] --> New: User Submits
-    New --> Grouped: Admin Groups
-    Grouped --> Reviewed: Admin Reviews
-    Reviewed --> Draft: Admin Selects + AI Suggests
-    Draft --> Approved: Admin Approves
-    Approved --> Published: Admin Publishes
-    Approved --> Rejected: Admin Rejects
-    New --> Rejected: Admin Rejects
-    Grouped --> Rejected: Admin Rejects
-    Published --> [*]
-    Rejected --> [*]
-```
-
-| Status | Description | Access |
-|--------|-------------|--------|
-| `new` | Just submitted | Admin only |
-| `grouped` | Similar questions grouped | Admin only |
-| `reviewed` | Group reviewed | Admin only |
-| `draft` | AI FAQ generated | Admin only |
-| `approved` | Ready to publish | Admin only |
-| `published` | Visible to everyone | Public |
-| `rejected` | Not suitable | Admin only |
-
----
-
-## 🌍 Deployment
-
-### Backend - Render
-
-1. **Push code to GitHub**
-   ```bash
-   git push origin main
-   ```
-
-2. **Create Render Account**
-   - Go to [render.com](https://render.com)
-   - Connect your GitHub repository
-
-3. **Create Web Service**
-   - **Name**: `faq-generator-api`
-   - **Root Directory**: `server`
-   - **Environment**: `Node`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-
-4. **Environment Variables**
-   ```
-   MONGODB_URI=mongodb+srv://...
-   JWT_SECRET=your_secret
-   GEMINI_API_KEY=your_key
-   CLIENT_URL=https://your-frontend.vercel.app
-   PORT=5000
-   ADMIN_EMAIL=admin@samagama.in
-   NODE_ENV=production
-   ```
-
-5. **Deploy**
-   - Render will auto-deploy on GitHub push
-
-### Frontend - Vercel
-
-1. **Import GitHub Repo**
-   - Go to [vercel.com](https://vercel.com)
-   - Import `FiscalMindset/FAQ`
-
-2. **Configure**
-   - **Root Directory**: `client`
-   - **Framework Preset**: `Vite`
-
-3. **Environment Variables**
-   ```
-   VITE_API_URL=https://faq-generator-api.onrender.com
-   ```
-
-4. **Deploy**
-   - Vercel will auto-deploy on GitHub push
-
-### MongoDB Atlas Setup
-
-1. Create free cluster at [mongodb.com/atlas](https://mongodb.com/atlas)
-2. Create database user with read-write access
-3. Whitelist IP `0.0.0.0/0` for initial setup (restrict later)
-4. Get connection string from Atlas dashboard
-5. Replace `<password>` in connection string
-
-### Gemini API Key
-
-1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
-2. Create API key
-3. Add to `GEMINI_API_KEY` env variable
-
----
-
-## 🧪 Production Checklist
-
-```mermaid
-flowchart LR
-    subgraph Security["🔒 Security"]
-        S1[SSL/TLS]
-        S2[Rate Limiting]
-        S3[JWT Expiry]
-        S4[Input Validation]
-        S5[CORS Config]
-    end
-
-    subgraph Performance["⚡ Performance"]
-        P1[Indexing]
-        P2[Caching]
-        P3[Compression]
-        P4[CDN]
-    end
-
-    subgraph Monitoring["📊 Monitoring"]
-        M1[Error Tracking]
-        M2[Analytics]
-        M3[Uptime]
-        M4[Logging]
-    end
-```
-
-- [ ] Enable CORS for production domain only
-- [ ] Set JWT expiry to 7 days
-- [ ] Enable rate limiting (100 req/min)
-- [ ] Add input sanitization
-- [ ] Use Helmet.js security headers
-- [ ] Enable MongoDB Atlas backup
-- [ ] Set up monitoring (Sentry/DataDog)
-- [ ] Configure auto-scaling on Render
-- [ ] Use Vercel Edge Network
-- [ ] Enable Gzip compression
-- [ ] Add database indexing
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 FAQ Generator/
-├── README.md
-├── .gitignore
-├── package.json                 # Root package.json
 │
-├── server/                      # Backend - Express.js
+├── .gitignore                    # Git ignore rules
+├── README.md                     # This file
+├── DEVELOPER_GUIDE.md            # Team developer documentation
+│
+├── package.json                  # Root scripts (install:all, dev:server, etc.)
+│
+├── server/                       # Backend API
 │   ├── src/
 │   │   ├── config/
-│   │   │   └── db.js           # MongoDB connection
-│   │   ├── controllers/
-│   │   │   ├── auth.controller.js
-│   │   │   ├── faq.controller.js
-│   │   │   ├── question.controller.js
-│   │   │   └── user.controller.js
+│   │   │   └── db.js            # MongoDB connection logic
+│   │   │
+│   │   ├── controllers/         # Request handlers
+│   │   │   ├── auth.controller.js    # Login, register
+│   │   │   ├── faq.controller.js     # CRUD FAQs
+│   │   │   ├── question.controller.js # CRUD questions + AI suggest
+│   │   │   └── user.controller.js    # User management
+│   │   │
 │   │   ├── middleware/
-│   │   │   └── auth.js         # JWT authentication
-│   │   ├── models/
+│   │   │   └── auth.js          # JWT verify + requireAdmin
+│   │   │
+│   │   ├── models/              # Mongoose schemas
 │   │   │   ├── User.js
 │   │   │   ├── Question.js
 │   │   │   └── FAQ.js
-│   │   ├── routes/
+│   │   │
+│   │   ├── routes/              # Express routes
 │   │   │   ├── auth.routes.js
 │   │   │   ├── faq.routes.js
 │   │   │   ├── question.routes.js
 │   │   │   └── user.routes.js
-│   │   ├── app.js              # Express app
-│   │   ├── server.js           # Server entry
-│   │   └── seed.js             # Database seeder
-│   ├── package.json
+│   │   │
+│   │   ├── app.js               # Express app setup
+│   │   ├── server.js            # Entry point
+│   │   └── seed.js              # Database seeder
+│   │
+│   ├── package.json             # Dependencies + scripts
 │   ├── .env                     # Local env (gitignored)
-│   └── .env.example            # Env template
+│   └── .env.example             # Env template
 │
-└── client/                      # Frontend - React + Vite
+└── client/                       # Frontend React app
     ├── src/
     │   ├── components/
-    │   │   └── Layout.jsx      # App layout
+    │   │   └── Layout.jsx       # Navbar + footer
+    │   │
     │   ├── context/
-    │   │   └── AuthContext.jsx # Auth state
-    │   ├── pages/
-    │   │   ├── Home.jsx        # Public FAQs
-    │   │   ├── Login.jsx
-    │   │   ├── Register.jsx
-    │   │   ├── SubmitQuestion.jsx
-    │   │   ├── Dashboard.jsx
-    │   │   ├── AdminQuestions.jsx
-    │   │   ├── AdminFAQs.jsx
-    │   │   └── AdminUsers.jsx
+    │   │   └── AuthContext.jsx  # Auth state management
+    │   │
+    │   ├── pages/               # Route pages
+    │   │   ├── Home.jsx         # Public FAQs homepage
+    │   │   ├── Login.jsx        # Login form
+    │   │   ├── Register.jsx     # Registration form
+    │   │   ├── SubmitQuestion.jsx # Question submission
+    │   │   ├── Dashboard.jsx    # User dashboard
+    │   │   ├── AdminQuestions.jsx # Admin: manage questions
+    │   │   ├── AdminFAQs.jsx    # Admin: manage FAQs
+    │   │   └── AdminUsers.jsx   # Admin: manage users
+    │   │
     │   ├── services/
-    │   │   └── api.js          # Axios instance
-    │   ├── App.jsx             # Router
-    │   ├── main.jsx            # Entry point
-    │   └── index.css           # Tailwind
-    ├── index.html
-    ├── vite.config.js
-    ├── tailwind.config.js
-    ├── postcss.config.js
-    ├── package.json
-    └── .env.example
+    │   │   └── api.js           # Axios instance with interceptors
+    │   │
+    │   ├── App.jsx              # Router setup
+    │   ├── main.jsx             # Entry point
+    │   └── index.css            # Tailwind directives
+    │
+    ├── index.html               # HTML template
+    ├── vite.config.js           # Vite configuration
+    ├── tailwind.config.js       # Tailwind configuration
+    ├── postcss.config.js        # PostCSS for Tailwind
+    ├── package.json             # Dependencies + scripts
+    └── .env.example             # Env template
 ```
 
 ---
 
-## 🔧 Scripts
+## API Endpoints
+
+### Authentication
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/register` | None | Create account |
+| POST | `/api/auth/login` | None | Login, get JWT |
+
+### Questions
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/questions` | Admin | List all questions |
+| POST | `/api/questions` | Any | Submit question |
+| POST | `/api/questions/group` | Admin | Group questions |
+| POST | `/api/questions/suggest-faq` | Admin | Get AI suggestion |
+| PATCH | `/api/questions/:id/status` | Admin | Update status |
+| DELETE | `/api/questions/:id` | Admin | Delete question |
+
+### FAQs
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/faqs/published` | None | List published FAQs |
+| GET | `/api/faqs` | Admin | List all FAQs |
+| GET | `/api/faqs/:id` | Admin | Get single FAQ |
+| POST | `/api/faqs` | Admin | Create FAQ |
+| PUT | `/api/faqs/:id` | Admin | Update FAQ |
+| PATCH | `/api/faqs/:id/status` | Admin | Update status |
+| DELETE | `/api/faqs/:id` | Admin | Delete FAQ |
+
+### Users
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/users` | Admin | List all users |
+| GET | `/api/users/stats` | Admin | Get user stats |
+| GET | `/api/users/:id` | User | Get user by ID |
+| PUT | `/api/users/:id` | Admin | Update user |
+| DELETE | `/api/users/:id` | Admin | Delete user |
+
+### Health Check
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/` | None | API info |
+| GET | `/health` | None | Server health |
+
+---
+
+## Environment Variables
+
+### Server (.env)
 
 ```bash
-# Root
-npm run install:all     # Install all dependencies
-npm run dev:server      # Start server (dev)
-npm run dev:client      # Start client (dev)
-npm run build:client    # Build for production
+# Required
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/dbname
+JWT_SECRET=your_64_character_random_string
+GEMINI_API_KEY=your_google_gemini_api_key
 
-# Server
-cd server
-npm run start           # Production start
-npm run dev             # Development with nodemon
-node src/seed.js        # Seed database
+# Optional
+CLIENT_URL=http://localhost:5173          # Frontend URL for CORS
+PORT=5000                                 # Server port
+ADMIN_EMAIL=admin@samagama.in            # Auto-promote to ADMIN
+NODE_ENV=development                      # or production
+```
 
-# Client
-cd client
-npm run dev             # Vite dev server
-npm run build           # Production build
-npm run preview         # Preview production build
+### Client (.env)
+
+```bash
+# Required (for production)
+VITE_API_URL=https://your-backend.onrender.com
 ```
 
 ---
 
-## 📝 License
+## Deployment
 
-MIT License - see [LICENSE](LICENSE) for details.
+### Backend - Render
+
+1. Create GitHub repo and push code
+2. Go to [render.com](https://render.com) → New → Web Service
+3. Connect GitHub repo
+4. Configure:
+   - **Root Directory**: `server`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+5. Add Environment Variables from `.env`
+6. Deploy
+
+### Frontend - Vercel
+
+1. Import GitHub repo in Vercel
+2. Configure:
+   - **Root Directory**: `client`
+   - **Framework**: Vite
+3. Add Environment Variable:
+   - `VITE_API_URL` = your Render backend URL
+4. Deploy
+
+### MongoDB Atlas
+
+1. Create free cluster at [mongodb.com/atlas](https://mongodb.com/atlas)
+2. Create database user (Security → Database Access)
+3. Whitelist IP `0.0.0.0/0` (for development)
+4. Get connection string (Connect → Connect your application)
+5. Replace `<password>` in connection string
+
+### Gemini API
+
+1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
+2. Create API key
+3. Add to `GEMINI_API_KEY` in Render
 
 ---
 
-## 👥 Contributing
+## Local Development
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing`)
-5. Open Pull Request
+```bash
+# Install all dependencies
+npm run install:all
+
+# Run server (Terminal 1)
+cd server && npm run dev
+
+# Run client (Terminal 2)
+cd client && npm run dev
+
+# Seed database
+cd server && node src/seed.js
+```
 
 ---
 
-<div align="center">
+## License
 
-**Built with ❤️ by [Samagama.in](https://samagama.in)**
-
-</div>
+MIT License
