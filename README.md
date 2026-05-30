@@ -14,6 +14,42 @@
 
 ---
 
+## Team Members
+
+### Project Lead
+
+| Name | Email | GitHub |
+|------|-------|--------|
+| Vicky Kumar | npdimagine@gmail.com | [FiscalMindset](https://github.com/FiscalMindset) |
+
+### Team Contributors
+
+| Name | Email |
+|------|-------|
+| Bhavesh Malviya | 23bcp254@sot.pdpu.ac.in |
+| Anoogna Gunjari | anoognagunjari@gmail.com |
+| Yash Parmar | yparmar24020@gmail.com |
+| Muskan Kumari | muskankumari5386@gmail.com |
+| Siddharth Sadhu | siddharthsadhu28@gmail.com |
+| Swanand Sirsikar | swanand.sirsikar@gmail.com |
+| Govind Upadhyay | govindupadhyay1307@gmail.com |
+| Muralikrishnan N | muralikrishnan2k7@gmail.com |
+| P Lokesh Reddy | plokeshreddy5678@gmail.com |
+| Poorti Swarup | poortiswarup1306@gmail.com |
+| Purandareswari Kaki | purandareswarikaki27@gmail.com |
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [README.md](README.md) | Project overview and architecture |
+| [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Developer setup and workflow |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines and team info |
+
+---
+
 ## Architecture Overview
 
 ### System Architecture
