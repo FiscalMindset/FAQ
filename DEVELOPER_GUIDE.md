@@ -56,7 +56,7 @@ cd client && npm run dev
 
 ### 4. Create Admin Account
 
-Register with the email set in `ADMIN_EMAIL` (default: `admin@samagama.in`) to automatically get ADMIN role.
+Register with the email set in `ADMIN_EMAIL` (default: `algsoch@gmail.com`) to automatically get ADMIN role.
 
 ---
 
