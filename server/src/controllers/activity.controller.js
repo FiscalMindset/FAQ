@@ -50,7 +50,10 @@ export const getActivityStats = async (req, res) => {
       totalUsers,
       recentUsers,
       totalActivities,
-      activityTypeCounts
+      activityTypeCounts,
+      userRegistrations,
+      userLogins,
+      questionSubmissions
     ] = await Promise.all([
       Activity.aggregate([
         { $match: { created_at: { $gte: thirtyDaysAgo } } },
@@ -80,6 +83,21 @@ export const getActivityStats = async (req, res) => {
       Activity.aggregate([
         { $group: { _id: '$type', count: { $sum: 1 } } },
         { $sort: { count: -1 } }
+      ]),
+      Activity.aggregate([
+        { $match: { type: 'user_registered', created_at: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]),
+      Activity.aggregate([
+        { $match: { type: 'user_login', created_at: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]),
+      Activity.aggregate([
+        { $match: { type: 'question_submitted', created_at: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
       ])
     ]);
 
@@ -99,7 +117,10 @@ export const getActivityStats = async (req, res) => {
       activeUsers7d: recentUsers,
       conversionRate: parseFloat(conversionRate),
       totalActivities,
-      activityTypeCounts
+      activityTypeCounts,
+      userRegistrations,
+      userLogins,
+      questionSubmissions
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

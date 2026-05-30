@@ -20,12 +20,12 @@ const AdminQuestions = () => {
   const fetchQuestions = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/questions', { params: { status: filterStatus } });
+      const response = await api.get('/api/questions', { params: { status: filterStatus === 'all' ? undefined : filterStatus } });
       setQuestions(response.data);
       setError(null);
       setSelectedIds([]);
     } catch (err) {
-      setError('Failed to load questions. ' + (err.response?.data?.error || ''));
+      setError('Failed to load questions. ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -158,7 +158,13 @@ const AdminQuestions = () => {
     }
   };
 
-  const statuses = ['new', 'grouped', 'reviewed', 'converted_to_faq', 'rejected'];
+  const statuses = ['all', 'new', 'grouped', 'reviewed', 'converted_to_faq', 'rejected'];
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    const d = new Date(dateStr);
+    return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
 
   const getStatusBadgeColor = (status) => {
     switch (status) {
@@ -243,7 +249,7 @@ const AdminQuestions = () => {
             <table className="w-full min-w-[600px]">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left">
+                  <th className="px-3 py-3 text-left">
                     <input
                       type="checkbox"
                       checked={selectedIds.length === questions.length && questions.length > 0}
@@ -251,16 +257,18 @@ const AdminQuestions = () => {
                       className="rounded"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Question</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Category</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Source</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Actions</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-600 min-w-[200px]">Question</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">Created By</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">Category</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">Source</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">Submitted</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {questions.map(q => (
                   <tr key={q._id} className="border-t hover:bg-gray-50">
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(q._id)}
@@ -268,29 +276,45 @@ const AdminQuestions = () => {
                         className="rounded"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="max-w-md truncate">{q.text}</div>
+                    <td className="px-3 py-3">
+                      <div className="max-w-xs lg:max-w-md xl:max-w-lg truncate font-medium text-gray-900" title={q.text}>{q.text}</div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
+                      {q.submitted_by ? (
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900">{q.submitted_by.username || 'Unknown'}</div>
+                          <div className="text-gray-500 text-xs">{q.submitted_by.email}</div>
+                          {q.is_guest && <span className="text-xs text-orange-500">(Guest)</span>}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">Unknown</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
                       <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeColor(q.status)}`}>
                         {q.category}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{q.source}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                    <td className="px-3 py-3">
+                      <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">{q.source || 'manual'}</span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      {formatDate(q.created_at)}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <select
                           value={q.status}
                           onChange={(e) => handleStatusChange(q._id, e.target.value)}
                           className="text-xs border rounded px-2 py-1"
                         >
-                          {statuses.map(s => (
+                          {statuses.filter(s => s !== 'all').map(s => (
                             <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                           ))}
                         </select>
                         <button
                           onClick={() => handleDelete(q._id)}
-                          className="text-red-600 hover:text-red-800 text-xs"
+                          className="text-red-600 hover:text-red-800 text-xs px-2 py-1 border border-red-200 rounded hover:bg-red-50"
                         >Delete</button>
                       </div>
                     </td>

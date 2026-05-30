@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 
 const ACTIVITY_TYPES = [
@@ -57,6 +58,7 @@ const AdminActivities = () => {
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [chartData, setChartData] = useState({ daily: [], byType: [] });
 
   const LIMIT = 30;
 
@@ -71,8 +73,12 @@ const AdminActivities = () => {
       if (search) params.search = search;
       if (append) params.offset = offset;
 
-      const response = await api.get('/api/activities', { params });
-      const data = response.data;
+      const [activitiesRes, statsRes] = await Promise.all([
+        api.get('/api/activities', { params }),
+        api.get('/api/activities/stats').catch(() => ({ data: null }))
+      ]);
+      
+      const data = activitiesRes.data;
 
       if (append) {
         setActivities(prev => [...prev, ...data.activities]);
@@ -81,9 +87,22 @@ const AdminActivities = () => {
         setOffset(0);
       }
       setTotal(data.total);
+      
+      if (statsRes.data) {
+        const dailyData = (statsRes.data.dailyActivity || []).map(a => ({
+          date: a._id,
+          activities: a.count
+        }));
+        const typeData = (statsRes.data.activityTypeCounts || []).map(t => ({
+          name: t._id.replace(/_/g, ' '),
+          count: t.count
+        }));
+        setChartData({ daily: dailyData, byType: typeData });
+      }
+      
       setError(null);
     } catch (err) {
-      setError('Failed to load activities. ' + (err.response?.data?.error || ''));
+      setError('Failed to load activities. ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -206,6 +225,35 @@ const AdminActivities = () => {
           </div>
         </div>
       </div>
+
+      {chartData.daily.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border p-4">
+            <h3 className="font-medium text-gray-900 mb-4">Activity Trend (30 Days)</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={chartData.daily}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip />
+                <Line type="monotone" dataKey="activities" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border p-4">
+            <h3 className="font-medium text-gray-900 mb-4">Activity by Type</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData.byType}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-20} textAnchor="end" height={60} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {loading && activities.length === 0 ? (
         <div className="flex justify-center py-20">

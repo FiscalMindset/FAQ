@@ -119,6 +119,21 @@ const AdminAnalytics = () => {
     count: t.count
   }));
 
+  const userRegData = (stats.userRegistrations || []).map(r => ({
+    date: r._id,
+    registrations: r.count
+  }));
+
+  const loginData = (stats.userLogins || []).map(l => ({
+    date: l._id,
+    logins: l.count
+  }));
+
+  const questionSubData = (stats.questionSubmissions || []).map(q => ({
+    date: q._id,
+    questions: q.count
+  }));
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -198,9 +213,62 @@ const AdminAnalytics = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
+          <h2 className="font-semibold text-lg mb-4">User Registrations (30 Days)</h2>
+          {userRegData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={userRegData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="registrations" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="Registrations" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-gray-400">No registrations yet</div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
+          <h2 className="font-semibold text-lg mb-4">User Logins (30 Days)</h2>
+          {loginData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={loginData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="logins" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Logins" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-gray-400">No login data yet</div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
+          <h2 className="font-semibold text-lg mb-4">Question Submissions (30 Days)</h2>
+          {questionSubData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={questionSubData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="questions" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Questions" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-gray-400">No question submissions yet</div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
           <h2 className="font-semibold text-lg mb-4">Activities by Type</h2>
           {typeData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={typeData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
@@ -210,14 +278,16 @@ const AdminAnalytics = () => {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-gray-400">No activity data yet</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">No activity data yet</div>
           )}
         </div>
+      </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
           <h2 className="font-semibold text-lg mb-4">Top Categories</h2>
           {categoryData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={categoryData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
@@ -227,7 +297,35 @@ const AdminAnalytics = () => {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-gray-400">No categories yet</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">No categories yet</div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
+          <h2 className="font-semibold text-lg mb-4">FAQ Status Distribution</h2>
+          {statusPieData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={statusPieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={90}
+                  paddingAngle={3}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                >
+                  {statusPieData.map((entry, i) => (
+                    <Cell key={`cell-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-gray-400">No FAQs created yet</div>
           )}
         </div>
       </div>

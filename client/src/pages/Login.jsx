@@ -49,9 +49,9 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-xl shadow-sm border p-6 md:p-8">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-sm sm:max-w-md">
+        <div className="bg-white rounded-xl shadow-sm border p-5 sm:p-8">
           <h1 className="text-2xl font-bold text-center mb-2">Welcome Back</h1>
           <p className="text-gray-600 text-center mb-6">Login to your FAQ Generator account</p>
           
