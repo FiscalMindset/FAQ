@@ -5,8 +5,10 @@ const AdminFAQs = () => {
   const [faqs, setFaqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [editingFaq, setEditingFaq] = useState(null);
+  const [viewingSource, setViewingSource] = useState(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importData, setImportData] = useState('');
 
@@ -28,20 +30,27 @@ const AdminFAQs = () => {
     }
   };
 
+  const showSuccess = (message) => {
+    setSuccess(message);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
   const handleStatusChange = async (id, newStatus) => {
     try {
       await api.patch(`/api/faqs/${id}/status`, { status: newStatus });
       fetchFaqs();
+      showSuccess(`FAQ status updated to ${newStatus}`);
     } catch (err) {
       setError('Failed to update status.');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this FAQ?')) return;
+    if (!window.confirm('Are you sure you want to delete this FAQ? This action cannot be undone.')) return;
     try {
       await api.delete(`/api/faqs/${id}`);
       fetchFaqs();
+      showSuccess('FAQ deleted successfully');
     } catch (err) {
       setError('Failed to delete FAQ.');
     }
@@ -52,6 +61,7 @@ const AdminFAQs = () => {
       await api.put(`/api/faqs/${id}`, updates);
       setEditingFaq(null);
       fetchFaqs();
+      showSuccess('FAQ updated successfully');
     } catch (err) {
       setError('Failed to update FAQ.');
     }
@@ -69,7 +79,7 @@ const AdminFAQs = () => {
         
         const parts = line.split('|').map(p => p.trim());
         if (parts.length < 2) {
-          errors.push(`Line ${i + 1}: Invalid format. Use "question | answer" or "question|answer"`);
+          errors.push(`Line ${i + 1}: Invalid format`);
           continue;
         }
         
@@ -93,7 +103,7 @@ const AdminFAQs = () => {
       setImportModalOpen(false);
       setImportData('');
       fetchFaqs();
-      alert(`Successfully imported ${imported.length} FAQs. ${errors.length > 0 ? '\nErrors: ' + errors.length : ''}`);
+      showSuccess(`Successfully imported ${imported.length} FAQs!${errors.length > 0 ? ` ${errors.length} lines had errors.` : ''}`);
     } catch (err) {
       setError('Failed to import FAQs. ' + (err.response?.data?.error || ''));
     }
@@ -135,9 +145,26 @@ const AdminFAQs = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-4 flex justify-between items-center">
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-bold">×</button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{error}</span>
+          </div>
+          <button onClick={() => setError(null)} className="font-bold hover:opacity-70">×</button>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-lg mb-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>{success}</span>
+          </div>
+          <button onClick={() => setSuccess(null)} className="font-bold hover:opacity-70">×</button>
         </div>
       )}
 
@@ -145,6 +172,9 @@ const AdminFAQs = () => {
         <div className="flex justify-center py-20"><div className="loading-spinner"></div></div>
       ) : faqs.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border">
+          <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           <p className="text-gray-500 mb-4">No FAQs found.</p>
           <p className="text-sm text-gray-400">Create FAQs from grouped questions or bulk import.</p>
         </div>
@@ -169,6 +199,15 @@ const AdminFAQs = () => {
                       value={editingFaq.answer}
                       onChange={(e) => setEditingFaq({ ...editingFaq, answer: e.target.value })}
                       rows={3}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Category:</label>
+                    <input
+                      type="text"
+                      value={editingFaq.category}
+                      onChange={(e) => setEditingFaq({ ...editingFaq, category: e.target.value })}
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -197,20 +236,40 @@ const AdminFAQs = () => {
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={faq.status}
-                        onChange={(e) => handleStatusChange(faq._id, e.target.value)}
-                        className="text-sm border rounded px-2 py-1"
-                      >
-                        {statuses.map(s => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="flex items-center gap-1 text-gray-500">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span>{faq.views || 0} views</span>
+                      </div>
+                      <span className="text-gray-400">|</span>
+                      <span className="text-gray-500">
+                        {faq.source_questions?.length > 0 ? (
+                          <button 
+                            onClick={() => setViewingSource(faq)}
+                            className="text-blue-600 hover:text-blue-800 underline"
+                          >
+                            {faq.source_questions.length} source question(s)
+                          </button>
+                        ) : (
+                          <span className="text-gray-400">No source</span>
+                        )}
+                      </span>
                     </div>
                   </div>
                   <p className="text-gray-600 mb-4">{faq.answer}</p>
-                  <div className="flex items-center gap-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-3 text-sm border-t pt-3">
+                    <select
+                      value={faq.status}
+                      onChange={(e) => handleStatusChange(faq._id, e.target.value)}
+                      className="text-sm border rounded px-2 py-1"
+                    >
+                      {statuses.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                     <button
                       onClick={() => setEditingFaq({ question: faq.question, answer: faq.answer, category: faq.category })}
                       className="text-blue-600 hover:text-blue-800 font-medium"
@@ -219,8 +278,8 @@ const AdminFAQs = () => {
                       onClick={() => handleDelete(faq._id)}
                       className="text-red-600 hover:text-red-800 font-medium"
                     >Delete</button>
-                    <span className="text-gray-400 text-xs">
-                      Created: {new Date(faq.created_at).toLocaleDateString()}
+                    <span className="text-gray-400 ml-auto">
+                      Created: {new Date(faq.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </span>
                   </div>
                 </>
@@ -230,12 +289,39 @@ const AdminFAQs = () => {
         </div>
       )}
 
+      {viewingSource && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Source Questions</h2>
+              <button onClick={() => setViewingSource(null)} className="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              FAQ: <span className="font-medium">{viewingSource.question}</span>
+            </p>
+            <div className="space-y-3">
+              {viewingSource.source_questions?.map((q, index) => (
+                <div key={q._id || index} className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-sm font-medium text-gray-800">{q.text}</p>
+                </div>
+              ))}
+            </div>
+            {(!viewingSource.source_questions || viewingSource.source_questions.length === 0) && (
+              <p className="text-gray-500 text-center py-4">No source questions for this FAQ.</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {importModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Bulk Import FAQs</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Bulk Import FAQs</h2>
+              <button onClick={() => setImportModalOpen(false)} className="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
+            </div>
             <p className="text-sm text-gray-600 mb-4">
-              Format: <code className="bg-gray-100 px-1 rounded">question | answer | category</code>
+              Format: <code className="bg-gray-100 px-2 py-1 rounded">question | answer | category</code>
               <br />One FAQ per line. Category is optional (defaults to "general").
             </p>
             <textarea

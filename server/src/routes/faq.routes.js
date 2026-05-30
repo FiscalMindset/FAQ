@@ -6,13 +6,15 @@ import {
   getFAQById,
   updateFAQ,
   updateFAQStatus,
-  deleteFAQ
+  deleteFAQ,
+  incrementViews
 } from '../controllers/faq.controller.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
 router.get('/published', getPublishedFAQs);
+router.patch('/:id/view', incrementViews);
 router.get('/:id', authenticate, getFAQById);
 router.post('/', authenticate, requireAdmin, createFAQ);
 router.get('/', authenticate, requireAdmin, getFAQs);

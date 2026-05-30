@@ -10,6 +10,7 @@ const faqSchema = new mongoose.Schema({
     default: 'draft'
   },
   source_questions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
+  views: { type: Number, default: 0 },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 });

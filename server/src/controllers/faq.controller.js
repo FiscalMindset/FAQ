@@ -152,3 +152,22 @@ export const deleteFAQ = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const incrementViews = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const faq = await FAQ.findByIdAndUpdate(
+      id,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+
+    if (!faq) {
+      return res.status(404).json({ error: 'FAQ not found.' });
+    }
+
+    res.json({ views: faq.views });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

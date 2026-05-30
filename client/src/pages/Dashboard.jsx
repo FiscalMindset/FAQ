@@ -12,8 +12,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMyData();
-  }, []);
+    if (user?.id) {
+      fetchMyData();
+    }
+  }, [user]);
 
   const fetchMyData = async () => {
     try {
@@ -82,6 +84,9 @@ const Dashboard = () => {
         
         {stats.submittedQuestions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
+            <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             <p className="mb-4">No questions submitted yet.</p>
             <Link 
               to="/submit-question"
@@ -92,7 +97,7 @@ const Dashboard = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[500px]">
               <thead>
                 <tr className="border-b text-left">
                   <th className="pb-2 text-sm font-medium text-gray-600">Question</th>
@@ -103,8 +108,10 @@ const Dashboard = () => {
               </thead>
               <tbody>
                 {stats.submittedQuestions.map(q => (
-                  <tr key={q._id} className="border-b last:border-0">
-                    <td className="py-3 pr-4">{q.text}</td>
+                  <tr key={q._id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="py-3 pr-4">
+                      <div className="max-w-md truncate">{q.text}</div>
+                    </td>
                     <td className="py-3 pr-4">
                       <span className="px-2 py-1 bg-gray-100 rounded text-sm">
                         {q.category}
@@ -118,7 +125,7 @@ const Dashboard = () => {
                         q.status === 'converted_to_faq' ? 'bg-green-100 text-green-800' :
                         q.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {q.status}
+                        {q.status.replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="py-3 text-sm text-gray-500">
