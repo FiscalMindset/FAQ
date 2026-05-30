@@ -81,3 +81,13 @@ export const getUserStats = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const checkUsername = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const existingUser = await User.findOne({ username });
+    res.json({ available: !existingUser });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

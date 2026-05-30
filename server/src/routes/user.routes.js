@@ -4,12 +4,14 @@ import {
   getUserById,
   updateUser,
   deleteUser,
-  getUserStats
+  getUserStats,
+  checkUsername
 } from '../controllers/user.controller.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
+router.get('/check-username/:username', checkUsername);
 router.get('/stats', authenticate, requireAdmin, getUserStats);
 router.get('/:id', authenticate, getUserById);
 router.get('/', authenticate, requireAdmin, getAllUsers);
