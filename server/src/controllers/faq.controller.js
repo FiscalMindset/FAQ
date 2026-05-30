@@ -2,6 +2,7 @@ import FAQ from '../models/FAQ.js';
 import Question from '../models/Question.js';
 import User from '../models/User.js';
 import Activity from '../models/Activity.js';
+import Notification from '../models/Notification.js';
 import { sendEmail } from '../services/email.service.js';
 
 const logActivity = async (type, description, entityType, entityId, userId, userEmail, userName, metadata = {}, isAiGenerated = false) => {
@@ -212,6 +213,34 @@ export const updateFAQStatus = async (req, res) => {
           user_email: req.user?.email,
           timestamp: new Date()
         });
+      }
+
+      if (status === 'published' && faq.source_questions && faq.source_questions.length > 0) {
+        const sourceQuestions = await Question.find({ _id: { $in: faq.source_questions } }).populate('submitted_by', 'username email');
+        
+        for (const sq of sourceQuestions) {
+          if (sq.submitted_by && !sq.is_guest) {
+            const user = sq.submitted_by;
+            
+            const notification = new Notification({
+              user_id: user._id,
+              email: user.email,
+              type: 'faq_published',
+              title: 'Your Question Is Now Live as an FAQ!',
+              message: `Great news! Your question "${sq.text.substring(0, 50)}..." has been published as an FAQ and is now visible to everyone!`,
+              related_question_id: sq._id,
+              related_faq_id: faq._id,
+              metadata: { faq_question: faq.question, faq_answer: faq.answer }
+            });
+            await notification.save();
+
+            await sendEmail('faqPublishedUser', {
+              user_name: user.username,
+              faq: { question: faq.question, answer: faq.answer, category: faq.category, views: faq.views || 0 },
+              timestamp: new Date()
+            }, { to: user.email });
+          }
+        }
       }
     }
 

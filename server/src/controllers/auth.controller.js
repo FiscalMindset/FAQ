@@ -1,6 +1,8 @@
 import User from '../models/User.js';
 import Activity from '../models/Activity.js';
+import Notification from '../models/Notification.js';
 import jwt from 'jsonwebtoken';
+import { sendEmail } from '../services/email.service.js';
 
 export const register = async (req, res) => {
   try {
@@ -37,6 +39,24 @@ export const register = async (req, res) => {
       metadata: { role: user.role }
     });
     await activity.save();
+
+    const notification = new Notification({
+      user_id: user._id,
+      email: user.email,
+      type: 'welcome',
+      title: 'Welcome to FAQ Generator!',
+      message: `Welcome ${username}! Thank you for joining FAQ Generator. Start by submitting your first question!`,
+      metadata: { role: user.role }
+    });
+    await notification.save();
+
+    await sendEmail('welcome', {
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      client_url: process.env.CLIENT_URL || 'http://localhost:5173',
+      created_at: user.created_at
+    }, { to: user.email });
 
     res.status(201).json({
       token,

@@ -287,7 +287,11 @@ const AdminQuestions = () => {
                           {q.is_guest && <span className="text-xs text-orange-500">(Guest)</span>}
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">Unknown</span>
+                        <div className="text-sm">
+                          <span className="text-gray-400">Legacy submission</span>
+                          {q.guest_email && <div className="text-xs text-orange-500">{q.guest_email}</div>}
+                          {!q.guest_email && <div className="text-xs text-gray-400">(pre-auth data)</div>}
+                        </div>
                       )}
                     </td>
                     <td className="px-3 py-3">

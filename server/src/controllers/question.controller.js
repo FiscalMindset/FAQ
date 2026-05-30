@@ -1,6 +1,8 @@
 import Question from '../models/Question.js';
 import Activity from '../models/Activity.js';
-import { sendEmail } from '../services/email.service.js';
+import User from '../models/User.js';
+import Notification from '../models/Notification.js';
+import { sendEmail, sendUserNotification } from '../services/email.service.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -99,17 +101,69 @@ export const updateQuestionStatus = async (req, res) => {
       return res.status(400).json({ error: 'Invalid status.' });
     }
 
-    const question = await Question.findByIdAndUpdate(
-      id,
-      { status, updated_at: Date.now() },
-      { new: true }
-    );
-
+    const question = await Question.findById(id).populate('submitted_by', 'username email');
     if (!question) {
       return res.status(404).json({ error: 'Question not found.' });
     }
 
-    res.json(question);
+    await Question.findByIdAndUpdate(id, { status, updated_at: Date.now() }, { new: true });
+
+    if (question.submitted_by && !question.is_guest) {
+      const user = question.submitted_by;
+      const userEmail = user.email;
+      const userName = user.username;
+
+      let notificationType = '';
+      let notificationTitle = '';
+      let notificationMessage = '';
+      let emailType = '';
+
+      switch (status) {
+        case 'reviewed':
+          notificationType = 'question_reviewing';
+          notificationTitle = 'Your Question Is Being Reviewed';
+          notificationMessage = `Your question "${question.text.substring(0, 50)}..." is now being actively reviewed by our team.`;
+          emailType = 'questionReviewing';
+          break;
+        case 'converted_to_faq':
+          notificationType = 'question_converted_to_faq';
+          notificationTitle = 'Your Question Became an FAQ!';
+          notificationMessage = `Great news! Your question "${question.text.substring(0, 50)}..." has been converted into an FAQ.`;
+          emailType = 'questionConvertedToFAQ';
+          break;
+        case 'rejected':
+          notificationType = 'question_rejected';
+          notificationTitle = 'Your Question Was Not Approved';
+          notificationMessage = `Unfortunately, your question "${question.text.substring(0, 50)}..." was not approved at this time.`;
+          emailType = 'questionRejected';
+          break;
+        default:
+          break;
+      }
+
+      if (notificationType) {
+        const notification = new Notification({
+          user_id: user._id,
+          email: userEmail,
+          type: notificationType,
+          title: notificationTitle,
+          message: notificationMessage,
+          related_question_id: question._id,
+          metadata: { status, category: question.category }
+        });
+        await notification.save();
+
+        await sendEmail(emailType, {
+          question: { text: question.text, category: question.category },
+          user_name: userName,
+          user_email: userEmail,
+          timestamp: new Date()
+        }, { to: userEmail });
+      }
+    }
+
+    const updatedQuestion = await Question.findById(id).populate('submitted_by', 'username email');
+    res.json(updatedQuestion);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
