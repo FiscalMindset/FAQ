@@ -11,6 +11,13 @@
 
 *Developed by [Team One](CONTRIBUTING.md) as an academic project*
 
+## 🔗 Live Demo
+
+| Service | URL |
+|---------|-----|
+| **Frontend** | https://faq-v300.onrender.com |
+| **Backend API** | https://backendfaq.onrender.com |
+
 </div>
 
 ---
@@ -38,7 +45,7 @@
 | Database | MongoDB, Mongoose |
 | AI | Google Gemini Pro |
 | Auth | JWT, bcryptjs |
-| Hosting | Vercel (Frontend), Render (Backend) |
+| Hosting | Render (Frontend + Backend) |
 
 ---
 
@@ -97,7 +104,7 @@ cd client && npm run dev
 └───────────────────────┬─────────────────────────────┘
                         │
 ┌───────────────────────▼─────────────────────────────┐
-│              Vercel CDN (Frontend)                   │
+│              Render Cloud (Frontend)                 │
 │           React + Vite + Tailwind CSS                │
 └───────────────────────┬─────────────────────────────┘
                         │ REST API
@@ -143,6 +150,11 @@ Admin publishes
 
 ## API Endpoints
 
+### Base URL
+```
+https://backendfaq.onrender.com
+```
+
 ### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -176,18 +188,41 @@ Admin publishes
 
 ## Deployment
 
-### Backend - Render
-1. Connect GitHub repo at [render.com](https://render.com)
-2. Set **Root Directory**: `server`
-3. **Build Command**: `npm install`
-4. **Start Command**: `npm start`
-5. Add environment variables from `.env`
+### Both Frontend & Backend on Render
 
-### Frontend - Vercel
-1. Import repo at [vercel.com](https://vercel.com)
-2. Set **Root Directory**: `client`
-3. Set **Framework**: Vite
-4. Add `VITE_API_URL` = your Render backend URL
+#### Backend - Render (Web Service)
+| Setting | Value |
+|---------|-------|
+| **Name** | `faq-generator-api` |
+| **Root Directory** | `server` |
+| **Framework** | `Node` |
+| **Build Command** | `npm install` |
+| **Start Command** | `npm start` |
+
+**Environment Variables:**
+```env
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net
+JWT_SECRET=your_64_char_secret
+GEMINI_API_KEY=your_gemini_key
+CLIENT_URL=https://your-frontend.onrender.com
+PORT=5000
+ADMIN_EMAIL=admin@example.com
+NODE_ENV=production
+```
+
+#### Frontend - Render (Static Site)
+| Setting | Value |
+|---------|-------|
+| **Name** | `faq-generator-frontend` |
+| **Root Directory** | `client` |
+| **Framework** | `Static` |
+| **Build Command** | `npm install && npm run build` |
+| **Publish Directory** | `dist` |
+
+**Environment Variables:**
+```env
+VITE_API_URL=https://backendfaq.onrender.com
+```
 
 ---
 
