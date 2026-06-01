@@ -48,7 +48,7 @@
 | Swanand Sirsikar | swanand.sirsikar@gmail.com | [@swanandsirsikar](https://github.com/swanandsirsikar) |
 | Govind Upadhyay | govindupadhyay1307@gmail.com | [@govindupadhyay](https://github.com/govindupadhyay) |
 | Muralikrishnan N | muralikrishnan2k7@gmail.com | [@muralikrishnan](https://github.com/muralikrishnan) |
-| P Lokesh Reddy | plokeshreddy5678@gmail.com | [@plokeshreddy](https://github.com/plokeshreddy) |
+| P Lokesh Reddy | plokeshreddy5678@gmail.com | [@lokeshreddy](https://github.com/lokesh-reddy08) |
 | Poorti Swarup | poortiswarup1306@gmail.com | [@poortiswarup](https://github.com/poortiswarup) |
 | Purandareswari Kaki | purandareswarikaki27@gmail.com | [@purandareswari](https://github.com/purandareswari) |
 
